@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ジョン・レノンの冒険</title>
+    <style>
+      canvas {
+        border: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="myCanvas" width="800" height="400"></canvas>
+
+    <script>
+      const canvas = document.getElementById("myCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let johnX = 50;
+      let johnY = 200;
+      const johnWidth = 40;
+      const johnHeight = 60;
+      let johnVelocityY = 0;
+      const johnSpeed = 5;
+      const gravity = 0.5;
+
+      let leftPressed = false;
+      let rightPressed = false;
+      let upPressed = false;
+
+      const bgm = new Audio("original_bgm.mp3");
+      bgm.loop = true;
+      bgm.play();
+
+      const level = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      ];
+
+      const coins = [
+        { x: 400, y: 120, collected: false },
+        { x: 480, y: 120, collected: false },
+        { x: 560, y: 120, collected: false },
+        { x: 640, y: 120, collected: false },
+        { x: 720, y: 120, collected: false },
+      ];
+
+      let score = 0;
+
+      function drawJohn() {
+        ctx.fillStyle = "black";
+        ctx.fillRect(johnX, johnY, johnWidth, johnHeight);
+
+        // ジョン・レノン風の髪
+        ctx.fillStyle = "brown";
+        ctx.fillRect(johnX, johnY - 10, johnWidth, 10);
+
+        // ジョン・レノン風のサングラス
+        ctx.fillStyle = "black";
+        ctx.fillRect(johnX + 10, johnY + 10, johnWidth - 20, 5);
+      }
+
+      function drawLevel() {
+        for (let i = 0; i < level.length; i++) {
+          for (let j = 0; j < level[i].length; j++) {
+            if (level[i][j] === 1) {
+              ctx.fillStyle = "brown";
+              ctx.fillRect(j * 40, i * 40, 40, 40);
+            } else if (level[i][j] === 2) {
+              ctx.fillStyle = "green";
+              ctx.fillRect(j * 40, i * 40, 40, 40);
+            }
+          }
+        }
+      }
+
+      function drawCoins() {
+        ctx.fillStyle = "gold";
+        for (let i = 0; i < coins.length; i++) {
+          if (!coins[i].collected) {
+            ctx.beginPath();
+            ctx.arc(coins[i].x, coins[i].y, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      function drawScore() {
+        ctx.fillStyle = "black";
+        ctx.font = "24px Arial";
+        ctx.fillText(`Score: ${score}`, 10, 30);
+      }
+
+      function isColliding(x, y) {
+        const row = Math.floor(y / 40);
+        const col = Math.floor(x / 40);
+        return level[row][col] === 1;
+      }
+
+      function checkCoinCollection() {
+        for (let i = 0; i < coins.length; i++) {
+          if (
+            !coins[i].collected &&
+            johnX < coins[i].x + 10 &&
+            johnX + johnWidth > coins[i].x - 10 &&
+            johnY < coins[i].y + 10 &&
+            johnY + johnHeight > coins[i].y - 10
+          ) {
+            coins[i].collected = true;
+            score += 10;
+          }
+        }
+      }
+
+      function checkGoal() {
+        const row = Math.floor((johnY + johnHeight) / 40);
+        const col = Math.floor((johnX + johnWidth / 2) / 40);
+        return level[row][col] === 2;
+      }
+
+      function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (leftPressed && johnX > 0) {
+          if (
+            !isColliding(johnX - johnSpeed, johnY) &&
+            !isColliding(johnX - johnSpeed, johnY + johnHeight - 1)
+          ) {
+            johnX -= johnSpeed;
+          }
+        }
+        if (rightPressed && johnX < canvas.width - johnWidth) {
+          if (
+            !isColliding(johnX + johnWidth + johnSpeed, johnY) &&
+            !isColliding(johnX + johnWidth + johnSpeed, johnY + johnHeight - 1)
+          ) {
+            johnX += johnSpeed;
+          }
+        }
+
+        johnVelocityY += gravity;
+        johnY += johnVelocityY;
+
+        if (
+          isColliding(johnX, johnY + johnHeight) ||
+          isColliding(johnX + johnWidth - 1, johnY + johnHeight)
+        ) {
+          johnY = Math.floor(johnY / 40) * 40;
+          johnVelocityY = 0;
+        }
+
+        if (
+          upPressed &&
+          (isColliding(johnX, johnY + johnHeight) ||
+            isColliding(johnX + johnWidth - 1, johnY + johnHeight))
+        ) {
+          johnVelocityY = -12;
+        }
+
+        checkCoinCollection();
+
+        if (checkGoal()) {
+          alert("Congratulations! You won!");
+          document.location.reload();
+        }
+
+        drawLevel();
+        drawCoins();
+        drawJohn();
+        drawScore();
+        requestAnimationFrame(update);
+      }
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          leftPressed = true;
+        } else if (event.key === "ArrowRight") {
+          rightPressed = true;
+        } else if (event.key === "ArrowUp") {
+          upPressed = true;
+        }
+      });
+
+      document.addEventListener("keyup", (event) => {
+        if (event.key === "ArrowLeft") {
+          leftPressed = false;
+        } else if (event.key === "ArrowRight") {
+          rightPressed = false;
+        } else if (event.key === "ArrowUp") {
+          upPressed = false;
+        }
+      });
+
+      update();
+    </script>
+  </body>
+</html>
